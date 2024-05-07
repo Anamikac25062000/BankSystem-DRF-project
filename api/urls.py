@@ -1,7 +1,10 @@
 from django.urls import path
 from .views import (
     UserRegistrationAPIView,
+    StaffRegistrationAPIView,
+    UserUpdateAPIView,
     LoginAPIView,
+    StaffLoginAPIView,
     AccountListCreateAPIView,
     AccountDetailAPIView,
     DepositAPIView,
@@ -21,7 +24,10 @@ from .views import (
 
 urlpatterns = [
     path('register/', UserRegistrationAPIView.as_view(), name='register'),
+    path('staff-register/', StaffRegistrationAPIView.as_view(), name='staff-register'),
+    path('users/<int:pk>/', UserUpdateAPIView.as_view(), name='user-update'),
     path('login/', LoginAPIView.as_view(), name='login'),
+    path('staff-login/', StaffLoginAPIView.as_view(), name='staff-login'),
     path('accounts/', AccountListCreateAPIView.as_view(), name='account-list-create'),
     path('accounts/<int:pk>/', AccountDetailAPIView.as_view(), name='account-detail'),
     path('deposit/', DepositAPIView.as_view(), name='deposit'),

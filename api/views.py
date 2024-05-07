@@ -24,6 +24,7 @@ from .models import LoanApplication
 from .serializers import LoanApplicationSerializer
 from .models import Budget, Expense, SavingsGoal
 from .serializers import BudgetSerializer, ExpenseSerializer, SavingsGoalSerializer
+from django.core.mail import send_mail
 
 class UserRegistrationAPIView(APIView):
     permission_classes = [AllowAny]
@@ -35,6 +36,10 @@ class UserRegistrationAPIView(APIView):
             serializer.save()
             return Response({'message': 'User created successfully'}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class UserUpdateAPIView(generics.UpdateAPIView):
+    serializer_class = UserUpdateSerializer
+    queryset = CustomUser.objects.all()
 
 class StaffRegistrationAPIView(APIView):
     permission_classes = [AllowAny]
@@ -42,6 +47,7 @@ class StaffRegistrationAPIView(APIView):
 
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data)
+        print(serializer)
         if serializer.is_valid():
             serializer.save()
             return Response({'message': 'Staff created successfully'}, status=status.HTTP_201_CREATED)
@@ -67,13 +73,6 @@ class StaffLoginAPIView(APIView):
                 return Response({'detail': 'Invalid username or password'}, status=status.HTTP_401_UNAUTHORIZED)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-class StaffLogoutAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        request.user.auth_token.delete()
-        return Response({'message': 'Logout successful'}, status=status.HTTP_200_OK)
 
 class StaffLoanApprovalAPIView(APIView):
     permission_classes = [IsAuthenticated, IsAdminOrStaffUser]
@@ -243,12 +242,12 @@ class LoanApplicationCreateAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class LoanApprovalAPIView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminOrStaffUser]
+    # permission_classes = [IsAuthenticated, IsAdminOrStaffUser]
 
     def post(self, request, loan_application_id):
         try:
             loan_application = LoanApplication.objects.get(pk=loan_application_id)
-            if request.user.role == CustomUser.STAFF:
+            if request.user.role == 'staff':
                 loan_application.staff_approver = request.user
                 loan_application.status = 'Approved'  # Update the status as approved
                 loan_application.save()

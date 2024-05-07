@@ -17,15 +17,21 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         user = CustomUser.objects.create_user(**validated_data)
         return user
 
+class UserUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ['username', 'first_name', 'last_name', 'email', 'role', 'phone_number', 'address', 'aadhar_number', 'pan_number']
+        read_only_fields = ['email', 'role', 'username', 'aadhar_number', 'pan_number']  # Email is unique and shouldn't be modified
+
 class StaffRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
 
     class Meta:
         model = CustomUser
-        fields = ['username', 'first_name', 'last_name', 'email', 'password', 'phone_number', 'address', 'aadhar_number', 'pan_number']
+        fields = ['username','role', 'first_name', 'last_name', 'email', 'password', 'phone_number', 'address', 'aadhar_number', 'pan_number']
 
     def create(self, validated_data):
-        staff = CustomUser.objects.create_staff(**validated_data)
+        staff = CustomUser.objects.create(**validated_data)
         return staff
 
 class UserLoginSerializer(serializers.Serializer):
@@ -52,7 +58,7 @@ class LoanApplicationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = LoanApplication
-        fields = ['loan_type', 'amount', 'status', 'applied_date', 'staff_approver']
+        fields = ['user', 'loan_type', 'amount', 'status', 'applied_date', 'staff_approver']
 
 class LoanApprovalSerializer(serializers.ModelSerializer):
     class Meta:
