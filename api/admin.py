@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import CustomUser, Account, Transaction, LoanApplication, Budget, Expense, SavingsGoal, InterestRate
+from .models import *
 
 admin.site.register(CustomUser)
 admin.site.register(Account)

@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.conf import settings
 
 class CustomUser(AbstractUser):
     USER = 'user'
@@ -16,16 +17,13 @@ class CustomUser(AbstractUser):
     email = models.EmailField(unique=True)
     first_name = models.CharField(max_length=30, blank=True, null=True)
     last_name = models.CharField(max_length=30, blank=True, null=True)
-    phone_number = models.CharField(max_length=10, blank=True, null=True)  # Assuming max length for phone number
-    address = models.TextField(blank=True, null=True)  # Assuming address can be multiline
-    aadhar_number = models.CharField(max_length=12, blank=True, null=True)  # Assuming Aadhar number length
-    pan_number = models.CharField(max_length=10, blank=True, null=True)  # Assuming PAN number length
+    phone_number = models.CharField(max_length=10, blank=True, null=True)
+    address = models.TextField(blank=True, null=True)
+    aadhar_number = models.CharField(max_length=12, blank=True, null=True)
+    pan_number = models.CharField(max_length=10, blank=True, null=True)
 
     def __str__(self):
         return self.username
-
-
-from django.conf import settings
 
 class Account(models.Model):
     SAVINGS = 'savings'
@@ -47,8 +45,6 @@ class Account(models.Model):
     def __str__(self):
         return f"{self.get_account_type_display()} Account for {self.user.username}"
 
-
-
 class Transaction(models.Model):
     DEPOSIT = 'deposit'
     WITHDRAWAL = 'withdrawal'
@@ -68,129 +64,38 @@ class Transaction(models.Model):
     def __str__(self):
         return f"{self.transaction_type.capitalize()} of {self.amount} on {self.timestamp}"
     
+class LoanApplication(models.Model):
+    LOAN_TYPE_CHOICES = [
+        ('personal', 'Personal Loan'),
+        ('home', 'Home Loan'),
+        ('car', 'Car Loan'),
+    ]
 
-# class LoanApplication(models.Model):
-#     PERSONAL = 'personal'
-#     HOME = 'home'
-#     CAR = 'car'
-#     EDUCATION = 'education'
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    loan_type = models.CharField(max_length=20, choices=LOAN_TYPE_CHOICES)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=20, default='pending')
+    applied_date = models.DateTimeField(auto_now_add=True)
+    staff_approver = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, blank=True, null=True, related_name='loan_approvals')
 
-#     LOAN_TYPE_CHOICES = [
-#         (PERSONAL, 'Personal Loan'),
-#         (HOME, 'Home Loan'),
-#         (CAR, 'Car Loan'),
-#         (EDUCATION, 'Education Loan'),
-#     ]
+    def __str__(self):
+        return f"{self.loan_type} Application for {self.user.username}"
+ 
+class LoanApproval(models.Model):
+    loan_application = models.ForeignKey('LoanApplication', on_delete=models.CASCADE)
+    new_status = models.CharField(max_length=50)
 
-#     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-#     loan_type = models.CharField(max_length=20, choices=LOAN_TYPE_CHOICES)
-#     amount = models.DecimalField(max_digits=10, decimal_places=2)
-#     status = models.CharField(max_length=20, default='pending')
-#     # Add more fields as needed: interest rate, duration, etc.
-
-#     def __str__(self):
-#         return f"{self.get_loan_type_display()} Loan Application by {self.user.username}"
-
-
-# class InterestRate(models.Model):
-#     LOAN_TYPES = [
-#         ('Personal Loan', 'Personal Loan'),
-#         ('Home Loan', 'Home Loan'),
-#         ('Car Loan', 'Car Loan'),
-#         ('Education Loan', 'Education Loan'),
-#         # Add more loan types as needed
-#     ]
-
-#     loan_type = models.CharField(max_length=100, choices=LOAN_TYPES, unique=True)
-#     rate = models.DecimalField(max_digits=5, decimal_places=2)  # Interest rate in percentage
-
-#     def __str__(self):
-#         return f"{self.loan_type} Interest Rate: {self.rate}%"
-
-# class LoanApplication(models.Model):
-#     LOAN_TYPES = [
-#         ('Personal Loan', 'Personal Loan'),
-#         ('Home Loan', 'Home Loan'),
-#         ('Car Loan', 'Car Loan'),
-#         ('Education Loan', 'Education Loan'),
-#         # Add more loan types as needed
-#     ]
-
-#     STATUS_CHOICES = [
-#         ('Pending', 'Pending'),
-#         ('Approved', 'Approved'),
-#         ('Rejected', 'Rejected'),
-#     ]
-
-#     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='loan_applications')
-#     loan_type = models.CharField(max_length=100, choices=LOAN_TYPES)
-#     amount = models.DecimalField(max_digits=15, decimal_places=2)
-#     # duration_months = models.IntegerField(default=0)
-#     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
-#     applied_date = models.DateTimeField(auto_now_add=True)
-
-#     def __str__(self):
-#         return f"{self.user.username} - {self.loan_type} Application"
-    
-# class LoanApproval(models.Model):
-#     loan_application = models.OneToOneField(LoanApplication, on_delete=models.CASCADE)
-#     approved_date = models.DateField(auto_now_add=True)
-#     new_status = models.CharField(max_length=20, choices=LoanApplication.STATUS_CHOICES, default='Approved')
-
-#     def __str__(self):
-#         return f"{self.loan_application.user.username} - {self.loan_application.loan_type} Approval"
-
-
-from decimal import Decimal
+    def __str__(self):
+        return f"{self.loan_application} - {self.new_status}"
 
 class InterestRate(models.Model):
-    LOAN_TYPES = [
-        ('Personal Loan', 'Personal Loan'),
-        ('Home Loan', 'Home Loan'),
-        ('Car Loan', 'Car Loan'),
-        ('Education Loan', 'Education Loan'),
-        # Add more loan types as needed
-    ]
-
-    loan_type = models.CharField(max_length=100, choices=LOAN_TYPES, unique=True)
-    rate = models.DecimalField(max_digits=5, decimal_places=2)  # Interest rate in percentage
+    interest_rate = models.DecimalField(max_digits=5, decimal_places=2)
+    start_date = models.DateField()
+    end_date = models.DateField()
 
     def __str__(self):
-        return f"{self.loan_type} Interest Rate: {self.rate}%"
-
-class LoanApplication(models.Model):
-    LOAN_TYPES = [
-        ('Personal Loan', 'Personal Loan'),
-        ('Home Loan', 'Home Loan'),
-        ('Car Loan', 'Car Loan'),
-        ('Education Loan', 'Education Loan'),
-        # Add more loan types as needed
-    ]
-
-    STATUS_CHOICES = [
-        ('Pending', 'Pending'),
-        ('Approved', 'Approved'),
-        ('Rejected', 'Rejected'),
-    ]
-
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='loan_applications')
-    loan_type = models.CharField(max_length=100, choices=LOAN_TYPES)
-    amount = models.DecimalField(max_digits=15, decimal_places=2)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
-    applied_date = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"{self.user.username} - {self.loan_type} Application"
-
-class LoanApproval(models.Model):
-    loan_application = models.OneToOneField(LoanApplication, on_delete=models.CASCADE)
-    approved_date = models.DateField(auto_now_add=True)
-    new_status = models.CharField(max_length=20, choices=LoanApplication.STATUS_CHOICES, default='Approved')
-
-    def __str__(self):
-        return f"{self.loan_application.user.username} - {self.loan_application.loan_type} Approval"
-
-
+        return f"{self.interest_rate}% - {self.start_date} to {self.end_date}"
+       
 class Budget(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     category = models.CharField(max_length=50)

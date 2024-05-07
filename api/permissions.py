@@ -6,8 +6,7 @@ class IsAdminOrStaffUser(permissions.BasePermission):
     """
 
     def has_permission(self, request, view):
-        # Check if the user is authenticated and is either admin or staff
-        return request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser)
+        return request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser or request.user.role=="Staff")
 
 
 class IsCustomerUser(permissions.BasePermission):
@@ -16,5 +15,4 @@ class IsCustomerUser(permissions.BasePermission):
     """
 
     def has_permission(self, request, view):
-        # Check if the user is authenticated and is not admin or staff
-        return request.user.is_authenticated and not (request.user.is_staff or request.user.is_superuser)
+        return request.user.is_authenticated and not (request.user.is_staff or request.user.is_superuser or request.user.role=="Staff")
