@@ -26,6 +26,9 @@ from .models import Budget, Expense, SavingsGoal
 from .serializers import BudgetSerializer, ExpenseSerializer, SavingsGoalSerializer
 from django.core.mail import send_mail
 
+"""
+API view for user registration.
+"""
 class UserRegistrationAPIView(APIView):
     permission_classes = [AllowAny]
     serializer_class = UserRegistrationSerializer
@@ -37,61 +40,9 @@ class UserRegistrationAPIView(APIView):
             return Response({'message': 'User created successfully'}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-class UserUpdateAPIView(generics.UpdateAPIView):
-    serializer_class = UserUpdateSerializer
-    queryset = CustomUser.objects.all()
-
-class StaffRegistrationAPIView(APIView):
-    permission_classes = [AllowAny]
-    serializer_class = StaffRegistrationSerializer
-
-    def post(self, request, *args, **kwargs):
-        serializer = self.serializer_class(data=request.data)
-        print(serializer)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'message': 'Staff created successfully'}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-class StaffLoginAPIView(APIView):
-    permission_classes = [AllowAny]
- 
-    def post(self, request):
-        serializer = UserLoginSerializer(data=request.data)
-        if serializer.is_valid():
-            username = serializer.validated_data['username']
-            password = serializer.validated_data['password']
-           
-            user = authenticate(request, username=username, password=password)
-            if user is not None and user.role == CustomUser.STAFF:
-                token, _ = Token.objects.get_or_create(user=user)
-                return Response({
-                    'message': 'Login successful',
-                    'token': token.key,
-                })
-            else:
-                return Response({'detail': 'Invalid username or password'}, status=status.HTTP_401_UNAUTHORIZED)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-class StaffLoanApprovalAPIView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminOrStaffUser]
-
-    def post(self, request):
-        pass
-
-class StaffUserBalanceAPIView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminOrStaffUser]
-
-    def get(self, request, user_id):
-        try:
-            user = CustomUser.objects.get(pk=user_id)
-            accounts = Account.objects.filter(user=user)
-            serializer = AccountSerializer(accounts, many=True)
-            return Response(serializer.data)
-        except CustomUser.DoesNotExist:
-            return Response({'detail': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
-
+"""
+API view for user login
+"""
 class LoginAPIView(APIView):
     permission_classes = [AllowAny]
  
@@ -114,7 +65,56 @@ class LoginAPIView(APIView):
                 return Response({'detail': 'Invalid username or password'}, status=status.HTTP_401_UNAUTHORIZED)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+"""
+API view for profile updation
+"""
+class UserUpdateAPIView(generics.UpdateAPIView):
+    serializer_class = UserUpdateSerializer
+    queryset = CustomUser.objects.all()
 
+"""
+API view for staff registration
+"""
+class StaffRegistrationAPIView(APIView):
+    permission_classes = [AllowAny]
+    serializer_class = StaffRegistrationSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data)
+        print(serializer)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'message': 'Staff created successfully'}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+"""
+API view for staff login
+"""
+class StaffLoginAPIView(APIView):
+    permission_classes = [AllowAny]
+ 
+    def post(self, request):
+        serializer = UserLoginSerializer(data=request.data)
+        if serializer.is_valid():
+            username = serializer.validated_data['username']
+            password = serializer.validated_data['password']
+           
+            user = authenticate(request, username=username, password=password)
+            if user is not None and user.role == CustomUser.STAFF:
+                token, _ = Token.objects.get_or_create(user=user)
+                return Response({
+                    'message': 'Login successful',
+                    'token': token.key,
+                })
+            else:
+                return Response({'detail': 'Invalid username or password'}, status=status.HTTP_401_UNAUTHORIZED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+"""
+API view for Creates and lists accounts for users.
+"""
 class AccountListCreateAPIView(generics.ListCreateAPIView):
     queryset = Account.objects.all()
     serializer_class = AccountSerializer
@@ -126,6 +126,9 @@ class AccountListCreateAPIView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+"""
+API view for Retrieves, updates, or deletes a specific account belonging to the authenticated user.
+"""
 class AccountDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Account.objects.all()
     serializer_class = AccountSerializer
@@ -134,6 +137,9 @@ class AccountDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         return self.queryset.filter(user=self.request.user)
 
+"""
+API view Allows authenticated users to deposit money into their account.
+"""
 class DepositAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -144,10 +150,32 @@ class DepositAPIView(APIView):
             account = Account.objects.get(user=request.user)
             account.balance += amount
             account.save()
+            #savings check
+            savings_goal = SavingsGoal.objects.get(user=request.user)
+            target = savings_goal.target_amount
+            accounts = Account.objects.filter(user=request.user)
+            total=0
+            for i in accounts:
+                total+=i.balance
+            if total>=target:
+                savings_goal.achieved = True
+                savings_goal.save()
+                
+                #--------Email Alert-----------------------------------------------
+                sender = "anamika@gmail.com"
+                recipient = [request.user.email]
+                subject_to_applicant = "Target Achieved"
+                message_to_applicant = "Congratulations!! Your savings goal target is achieved"
+                send_mail(subject_to_applicant, message_to_applicant, sender, recipient)
+                #--------Email Alert-----------------------------------------------
+
             return Response({'message': 'Deposit successful', 'balance': account.balance}, status=status.HTTP_200_OK)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+"""
+API view Allows authenticated users to withdraw money from their account.
+"""
 class WithdrawalAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -165,6 +193,9 @@ class WithdrawalAPIView(APIView):
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+"""
+API view Allows authenticated users to transfer money from their account to the another account.
+"""
 class TransferAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -231,6 +262,9 @@ class InterestListAPIView(APIView):
         serializer = InterestRateSerializer(interest_rates, many=True)
         return Response(serializer.data)
 
+"""
+API view Allows authenticated users to submit a loan application.
+"""
 class LoanApplicationCreateAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -241,8 +275,31 @@ class LoanApplicationCreateAPIView(APIView):
             return Response({'message': 'Loan application submitted successfully'}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+"""
+API  view for Approves or rejects a loan application.
+"""
+class StaffLoanApprovalAPIView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminOrStaffUser]
+
+    def post(self, request):
+        pass
+
+class StaffUserBalanceAPIView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminOrStaffUser]
+
+    def get(self, request, user_id):
+        try:
+            user = CustomUser.objects.get(pk=user_id)
+            accounts = Account.objects.filter(user=user)
+            serializer = AccountSerializer(accounts, many=True)
+            return Response(serializer.data)
+        except CustomUser.DoesNotExist:
+            return Response({'detail': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+"""
+API  view for Approves or rejects a loan application.
+"""
 class LoanApprovalAPIView(APIView):
-    # permission_classes = [IsAuthenticated, IsAdminOrStaffUser]
 
     def post(self, request, loan_application_id):
         try:
@@ -257,6 +314,9 @@ class LoanApprovalAPIView(APIView):
         except LoanApplication.DoesNotExist:
             return Response({'detail': 'Loan application not found'}, status=status.HTTP_404_NOT_FOUND)
 
+"""
+View for Retrieves a list of loan applications associated with the authenticated user.
+"""
 class UserLoanApplicationListView(ListAPIView):
     serializer_class = LoanApplicationSerializer
     permission_classes = [IsAuthenticated]
@@ -265,6 +325,9 @@ class UserLoanApplicationListView(ListAPIView):
         user = self.request.user
         return LoanApplication.objects.filter(user=user)
 
+"""
+API view for the creation and listing of budgets for the authenticated user.
+"""
 class BudgetListCreateAPIView(generics.ListCreateAPIView):
     queryset = Budget.objects.all()
     serializer_class = BudgetSerializer
@@ -276,6 +339,9 @@ class BudgetListCreateAPIView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+"""
+API view for the creation and listing of expenses for the authenticated user.
+"""
 class ExpenseListCreateAPIView(generics.ListCreateAPIView):
     queryset = Expense.objects.all()
     serializer_class = ExpenseSerializer
@@ -287,6 +353,9 @@ class ExpenseListCreateAPIView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+"""
+API view for the creation and listing of savings goals for the authenticated user.
+"""
 class SavingsGoalListCreateAPIView(generics.ListCreateAPIView):
     queryset = SavingsGoal.objects.all()
     serializer_class = SavingsGoalSerializer
@@ -298,7 +367,9 @@ class SavingsGoalListCreateAPIView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
-
+"""
+Retrieves a paginated list of transaction statements for the authenticated user's account.
+"""
 class ViewAccountStatement(ListAPIView):
     serializer_class = ViewStatementSerializer
     permission_classes = [IsAuthenticated]

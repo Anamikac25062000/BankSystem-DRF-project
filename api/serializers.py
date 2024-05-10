@@ -1,11 +1,12 @@
 from rest_framework import serializers
 from .models import *
 from django.utils import timezone
-from .models import Account
-from .models import LoanApplication, LoanApproval
 from decimal import Decimal
-from .models import Budget, Expense, SavingsGoal
+from .models import Budget, Expense, SavingsGoal, LoanApplication, LoanApproval, Account
 
+"""
+Serializes user registration data for creating a new user account.
+"""
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
 
@@ -17,12 +18,18 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         user = CustomUser.objects.create_user(**validated_data)
         return user
 
+"""
+Serializes user update data for updating user account details.
+"""
 class UserUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = ['username', 'first_name', 'last_name', 'email', 'role', 'phone_number', 'address', 'aadhar_number', 'pan_number']
-        read_only_fields = ['email', 'role', 'username', 'aadhar_number', 'pan_number']  # Email is unique and shouldn't be modified
+        read_only_fields = ['email', 'role', 'username', 'aadhar_number', 'pan_number'] 
 
+"""
+Serializes staff registration data for creating a new staff account.
+"""
 class StaffRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
 
@@ -34,25 +41,43 @@ class StaffRegistrationSerializer(serializers.ModelSerializer):
         staff = CustomUser.objects.create(**validated_data)
         return staff
 
+"""
+Serializes user login data for authentication.
+"""
 class UserLoginSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField(style={'input_type': 'password'})
 
+"""
+Serializes account data.
+"""
 class AccountSerializer(serializers.ModelSerializer):
     class Meta:
         model = Account
         fields = ['id', 'account_type', 'balance']
 
+"""
+Serializes deposit amount for a transaction.
+"""
 class DepositSerializer(serializers.Serializer):
     amount = serializers.DecimalField(max_digits=10, decimal_places=2)
 
+"""
+Serializes transfer amount for a transaction.
+"""
 class WithdrawalSerializer(serializers.Serializer):
     amount = serializers.DecimalField(max_digits=10, decimal_places=2)
 
+"""
+Serializes transfer amount for a transaction.
+"""
 class TransferSerializer(serializers.Serializer):
     amount = serializers.DecimalField(max_digits=10, decimal_places=2)
     target_account_id = serializers.IntegerField()
 
+"""
+Serializes loan application data.
+"""
 class LoanApplicationSerializer(serializers.ModelSerializer):
     staff_approver = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.all(), required=False)
 
@@ -60,6 +85,9 @@ class LoanApplicationSerializer(serializers.ModelSerializer):
         model = LoanApplication
         fields = ['user', 'loan_type', 'amount', 'status', 'applied_date', 'staff_approver']
 
+"""
+Serializes the approval of a loan application.
+"""
 class LoanApprovalSerializer(serializers.ModelSerializer):
     class Meta:
         model = LoanApproval
@@ -87,21 +115,33 @@ class InterestRateSerializer(serializers.ModelSerializer):
         model = InterestRate
         fields = '__all__'
 
+"""
+Serializes budget data.
+"""
 class BudgetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Budget
         fields = ['id', 'category', 'amount']
 
+"""
+Serializes expense data.
+"""
 class ExpenseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Expense
         fields = ['id', 'category', 'amount', 'date']
 
+"""
+Serializes savings goal data.
+"""
 class SavingsGoalSerializer(serializers.ModelSerializer):
     class Meta:
         model = SavingsGoal
         fields = ['id', 'goal_name', 'target_amount', 'current_amount', 'achieved']
 
+"""
+Serializes transaction data for viewing account statements.
+"""
 class ViewStatementSerializer(serializers.ModelSerializer):
     timestamp = serializers.DateTimeField(format="%d-%m-%Y %H:%M:%S", default_timezone=timezone.get_current_timezone())
  
